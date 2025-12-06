@@ -23,6 +23,7 @@ logger = logging.getLogger("voice-agent")
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+
 def load_prompt(level: str = "beginner") -> str:
     """Load system prompt based on user's language level."""
     system_prompt = (PROMPTS_DIR / "system.txt").read_text()
@@ -30,7 +31,9 @@ def load_prompt(level: str = "beginner") -> str:
 
     if level_file.exists():
         level_instructions = level_file.read_text()
-        system_prompt = system_prompt.replace("{LEVEL_INSTRUCTIONS}", level_instructions)
+        system_prompt = system_prompt.replace(
+            "{LEVEL_INSTRUCTIONS}", level_instructions
+        )
     else:
         system_prompt = system_prompt.replace("{LEVEL_INSTRUCTIONS}", "")
 
@@ -49,6 +52,7 @@ async def entrypoint(ctx: JobContext):
     room_metadata = ctx.room.metadata or "{}"
     try:
         import json
+
         metadata = json.loads(room_metadata)
     except:
         metadata = {}
@@ -59,7 +63,9 @@ async def entrypoint(ctx: JobContext):
     level = metadata.get("level", "beginner")
     speaking_speed = float(metadata.get("speaking_speed", 1.0))
 
-    logger.info(f"Starting conversation - Language: {target_language}, Level: {level}, Speed: {speaking_speed}")
+    logger.info(
+        f"Starting conversation - Language: {target_language}, Level: {level}, Speed: {speaking_speed}"
+    )
 
     # Initialize system prompt
     system_prompt = load_prompt(level)
@@ -103,7 +109,7 @@ async def entrypoint(ctx: JobContext):
     tts = cartesia.TTS(
         voice=voice_id,
         speed=speaking_speed,
-        model="sonic-2",
+        model="sonic-3",
     )
 
     # Wait for participant to connect
