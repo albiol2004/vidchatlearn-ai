@@ -1,6 +1,6 @@
 # VidChatLearn AI
 
-AI-powered voice conversation app for language learning.
+AI-powered voice conversation app for language learning
 
 ## Tech Stack
 
@@ -60,15 +60,15 @@ git push -u origin main
 
 Go to **Settings > Secrets and variables > Actions** and add:
 
-| Secret | Description |
-|--------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `VITE_LIVEKIT_URL` | LiveKit WebSocket URL |
+| Secret                        | Description            |
+| ----------------------------- | ---------------------- |
+| `VITE_SUPABASE_URL`           | Supabase project URL   |
+| `VITE_SUPABASE_ANON_KEY`      | Supabase anonymous key |
+| `VITE_LIVEKIT_URL`            | LiveKit WebSocket URL  |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
-| `VERCEL_TOKEN` | Vercel API token |
-| `VERCEL_ORG_ID` | Vercel organization ID |
-| `VERCEL_PROJECT_ID` | Vercel project ID |
+| `VERCEL_TOKEN`                | Vercel API token       |
+| `VERCEL_ORG_ID`               | Vercel organization ID |
+| `VERCEL_PROJECT_ID`           | Vercel project ID      |
 
 ### 3. Create Vercel Project
 
@@ -86,6 +86,7 @@ cat .vercel/project.json
 ### 4. Configure Branch Protection (Recommended)
 
 Go to **Settings > Branches > Add rule**:
+
 - Branch name: `main`
 - Require status checks: `Lint & Typecheck`, `Test`, `Build`
 - Require pull request before merging
@@ -119,6 +120,7 @@ supabase/
 ## Database
 
 The database schema includes comprehensive tracking for:
+
 - User profiles with GDPR consent management
 - Conversations with detailed metrics
 - Transcripts with sentiment analysis
