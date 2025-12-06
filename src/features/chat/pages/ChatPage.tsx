@@ -1,7 +1,27 @@
 import { useParams } from 'react-router-dom';
+import { useLiveKit } from '../hooks/useLiveKit';
+import { VoiceControls } from '../components/VoiceControls';
+import { TranscriptDisplay } from '../components/TranscriptDisplay';
 
 export default function ChatPage() {
   const { conversationId } = useParams();
+
+  const {
+    isConnected,
+    isConnecting,
+    isSpeaking,
+    agentIsSpeaking,
+    isMicEnabled,
+    transcripts,
+    error,
+    connect,
+    disconnect,
+    toggleMicrophone,
+  } = useLiveKit({
+    targetLanguage: 'en',
+    nativeLanguage: 'es',
+    level: 'beginner',
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -9,41 +29,109 @@ export default function ChatPage() {
         <h1 className="text-2xl font-bold">
           {conversationId ? 'Continue Conversation' : 'New Conversation'}
         </h1>
+        {isConnected && (
+          <span className="flex items-center gap-2 text-sm text-green-600">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+            Connected
+          </span>
+        )}
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed p-8">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-            <svg
-              className="h-10 w-10 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-              />
-            </svg>
+        {!isConnected ? (
+          <div className="text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+              <svg
+                className="h-10 w-10 text-primary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                />
+              </svg>
+            </div>
+            <h2 className="mb-2 text-xl font-semibold">Ready to practice?</h2>
+            <p className="mb-6 text-muted-foreground">
+              Click the button below to start a voice conversation with your AI tutor.
+            </p>
+            <VoiceControls
+              isConnected={isConnected}
+              isConnecting={isConnecting}
+              isMicEnabled={isMicEnabled}
+              isSpeaking={isSpeaking}
+              agentIsSpeaking={agentIsSpeaking}
+              onConnect={connect}
+              onDisconnect={disconnect}
+              onToggleMic={toggleMicrophone}
+            />
           </div>
-          <h2 className="mb-2 text-xl font-semibold">Ready to practice?</h2>
-          <p className="mb-6 text-muted-foreground">
-            Click the button below to start a voice conversation with your AI tutor.
-          </p>
-          <button className="rounded-lg bg-primary px-8 py-3 font-medium text-primary-foreground hover:bg-primary/90">
-            Start Conversation
-          </button>
-        </div>
+        ) : (
+          <div className="flex w-full flex-col items-center gap-6">
+            {/* AI Avatar / Speaking indicator */}
+            <div className="relative">
+              <div
+                className={`flex h-32 w-32 items-center justify-center rounded-full transition-all ${
+                  agentIsSpeaking ? 'bg-primary/20 ring-4 ring-primary/50' : 'bg-muted'
+                }`}
+              >
+                <svg
+                  className={`h-16 w-16 transition-colors ${
+                    agentIsSpeaking ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              {agentIsSpeaking && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-primary/30" />
+              )}
+            </div>
+
+            <p className="text-center text-muted-foreground">
+              {agentIsSpeaking
+                ? 'AI tutor is speaking...'
+                : isSpeaking
+                  ? 'Listening to you...'
+                  : 'Speak in English to practice. The AI will respond and help you improve.'}
+            </p>
+
+            {/* Voice Controls */}
+            <VoiceControls
+              isConnected={isConnected}
+              isConnecting={isConnecting}
+              isMicEnabled={isMicEnabled}
+              isSpeaking={isSpeaking}
+              agentIsSpeaking={agentIsSpeaking}
+              onConnect={connect}
+              onDisconnect={disconnect}
+              onToggleMic={toggleMicrophone}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Transcript area - will show live transcript during conversation */}
-      <div className="mt-4 rounded-lg border bg-muted/30 p-4">
-        <h3 className="mb-2 text-sm font-medium text-muted-foreground">Live Transcript</h3>
-        <p className="text-sm italic text-muted-foreground">
-          Transcript will appear here during the conversation...
-        </p>
+      {/* Transcript area */}
+      <div className="mt-4">
+        <TranscriptDisplay transcripts={transcripts} isConnected={isConnected} />
       </div>
     </div>
   );
