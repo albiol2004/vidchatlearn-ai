@@ -14,10 +14,7 @@ export function Header() {
         {user && (
           <>
             <span className="text-sm text-muted-foreground">{user.email}</span>
-            <Link
-              to="/account"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
+            <Link to="/account" className="text-sm text-muted-foreground hover:text-foreground">
               Account
             </Link>
             <button

@@ -41,7 +41,7 @@ export default function ChatPage() {
       {/* Transcript area - will show live transcript during conversation */}
       <div className="mt-4 rounded-lg border bg-muted/30 p-4">
         <h3 className="mb-2 text-sm font-medium text-muted-foreground">Live Transcript</h3>
-        <p className="text-sm text-muted-foreground italic">
+        <p className="text-sm italic text-muted-foreground">
           Transcript will appear here during the conversation...
         </p>
       </div>

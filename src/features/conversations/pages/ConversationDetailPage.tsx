@@ -26,7 +26,7 @@ export default function ConversationDetailPage() {
           <div className="rounded-lg border p-6">
             <h2 className="mb-4 text-lg font-semibold">Transcript</h2>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground italic">
+              <p className="text-sm italic text-muted-foreground">
                 Transcript will be loaded here...
               </p>
             </div>
@@ -38,9 +38,7 @@ export default function ConversationDetailPage() {
           <div className="rounded-lg border p-6">
             <h2 className="mb-4 text-lg font-semibold">Learning Tips</h2>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground italic">
-                Tips will be displayed here...
-              </p>
+              <p className="text-sm italic text-muted-foreground">Tips will be displayed here...</p>
             </div>
           </div>
 

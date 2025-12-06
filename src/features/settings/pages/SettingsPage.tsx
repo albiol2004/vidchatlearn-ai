@@ -49,14 +49,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Speaking speed</label>
-            <input
-              type="range"
-              min="0.5"
-              max="2"
-              step="0.1"
-              defaultValue="1"
-              className="w-full"
-            />
+            <input type="range" min="0.5" max="2" step="0.1" defaultValue="1" className="w-full" />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Slower</span>
               <span>Normal</span>
