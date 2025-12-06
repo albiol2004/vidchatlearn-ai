@@ -18,6 +18,7 @@
     "db:generate-types": "supabase gen types typescript --local > src/types/database.ts",
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
+    "deploy": "./scripts/deploy.sh",
     "prepare": "husky"
   },
   "dependencies": {

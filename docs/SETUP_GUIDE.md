@@ -204,7 +204,37 @@ Check available voices at: [play.cartesia.ai](https://play.cartesia.ai)
 
 Choose ONE of the following:
 
-### Option A: OpenAI (Recommended for cost)
+### Option A: DeepSeek (Recommended - Cheapest)
+
+DeepSeek offers the best price-to-performance ratio, ~90% cheaper than competitors.
+
+1. Go to [platform.deepseek.com](https://platform.deepseek.com)
+2. Sign up with email or Google
+3. Go to **API Keys** in the dashboard
+4. Click **Create API Key**
+5. Copy the key
+6. **Add credits**: Top up with as little as $5
+
+#### Pricing:
+| Model | Input | Output | Best For |
+|-------|-------|--------|----------|
+| deepseek-chat | $0.14/1M | $0.28/1M | **Recommended** - extremely cheap |
+| deepseek-reasoner | $0.55/1M | $2.19/1M | Complex reasoning tasks |
+
+#### Why DeepSeek:
+- **~10x cheaper** than GPT-4o-mini
+- Quality comparable to GPT-4
+- Fast response times
+- OpenAI-compatible API (easy to switch)
+
+#### API Endpoint:
+```
+Base URL: https://api.deepseek.com
+```
+
+---
+
+### Option B: OpenAI
 
 1. Go to [platform.openai.com](https://platform.openai.com)
 2. Sign up or log in
@@ -213,22 +243,16 @@ Choose ONE of the following:
    - Name: `vidchatlearn`
 5. Copy the key (starts with `sk-`)
 6. **Add billing**: Settings > Billing > Add payment method
-   - Set a usage limit (e.g., $20/month initially)
 
 #### Pricing:
 | Model | Input | Output | Best For |
 |-------|-------|--------|----------|
-| gpt-4o-mini | $0.15/1M | $0.60/1M | **Recommended** - cheap & good |
+| gpt-4o-mini | $0.15/1M | $0.60/1M | Budget option |
 | gpt-4o | $2.50/1M | $10/1M | Higher quality |
-| gpt-4.1 | $2/1M | $8/1M | Latest, longer context |
-
-#### Free Tier:
-- No free tier, but $5 credit for new accounts
-- Pay-as-you-go after that
 
 ---
 
-### Option B: Anthropic Claude
+### Option C: Anthropic Claude
 
 1. Go to [console.anthropic.com](https://console.anthropic.com)
 2. Sign up with email
@@ -243,10 +267,6 @@ Choose ONE of the following:
 |-------|-------|--------|----------|
 | claude-3-haiku | $0.25/1M | $1.25/1M | Fast & cheap |
 | claude-3.5-sonnet | $3/1M | $15/1M | Best quality |
-| claude-3-opus | $15/1M | $75/1M | Most capable |
-
-#### Free Tier:
-- $5 credit for new accounts
 
 ---
 
