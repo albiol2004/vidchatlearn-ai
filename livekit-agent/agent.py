@@ -1,20 +1,14 @@
 import asyncio
+import json
 import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from livekit import rtc
-from livekit.agents import (
-    AutoSubscribe,
-    JobContext,
-    JobProcess,
-    WorkerOptions,
-    cli,
-    llm,
-)
-from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import deepgram, cartesia, openai, silero
+from livekit import agents, rtc
+from livekit.agents import AgentServer, AgentSession, Agent, room_io
+from livekit.plugins import silero, deepgram, cartesia, openai
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 load_dotenv()
 
@@ -40,19 +34,51 @@ def load_prompt(level: str = "beginner") -> str:
     return system_prompt
 
 
-def prewarm(proc: JobProcess):
-    """Preload models to reduce first response latency."""
-    proc.userdata["vad"] = silero.VAD.load()
+# Voice map for Cartesia voices by language
+VOICE_MAP = {
+    "en": "a0e99841-438c-4a64-b679-ae501e7d6091",  # British Lady
+    "es": "846d6cb0-2301-48b6-9571-6d4fd3ffea35",  # Spanish Speaker
+    "fr": "a8a1eb38-5f15-4c1d-8722-7ac0f329727d",  # French Speaker
+    "de": "b9de4a89-2257-424b-94c2-db18ba68c81a",  # German Speaker
+    "it": "ee7ea9f8-c0c1-498c-9f62-5b7b56a9ab60",  # Italian Speaker
+    "pt": "700d1ee3-a641-4018-ba6e-899dcadc9e2b",  # Portuguese Speaker
+    "ja": "2b568345-1d48-4047-b25f-7baccf842eb0",  # Japanese Speaker
+    "ko": "663afeec-d082-4ab5-92cc-1c7a9b8718c3",  # Korean Speaker
+    "zh": "d4d4b115-57a0-48ea-9a1a-9898966c2966",  # Chinese Speaker
+}
 
 
-async def entrypoint(ctx: JobContext):
+class LanguageTutor(Agent):
+    """Language learning assistant agent."""
+
+    def __init__(
+        self,
+        target_language: str = "en",
+        native_language: str = "es",
+        level: str = "beginner",
+    ) -> None:
+        # Load and configure system prompt
+        system_prompt = load_prompt(level)
+        system_prompt = system_prompt.replace("{TARGET_LANGUAGE}", target_language.upper())
+        system_prompt = system_prompt.replace("{NATIVE_LANGUAGE}", native_language.upper())
+
+        super().__init__(instructions=system_prompt)
+
+        self.target_language = target_language
+        self.native_language = native_language
+        self.level = level
+
+
+server = AgentServer()
+
+
+@server.rtc_session()
+async def entrypoint(ctx: agents.JobContext):
     """Main entrypoint for the voice agent."""
 
     # Get room metadata for user preferences
     room_metadata = ctx.room.metadata or "{}"
     try:
-        import json
-
         metadata = json.loads(room_metadata)
     except:
         metadata = {}
@@ -67,93 +93,48 @@ async def entrypoint(ctx: JobContext):
         f"Starting conversation - Language: {target_language}, Level: {level}, Speed: {speaking_speed}"
     )
 
-    # Initialize system prompt
-    system_prompt = load_prompt(level)
-    system_prompt = system_prompt.replace("{TARGET_LANGUAGE}", target_language.upper())
-    system_prompt = system_prompt.replace("{NATIVE_LANGUAGE}", native_language.upper())
+    # Get voice ID for the target language
+    voice_id = VOICE_MAP.get(target_language, VOICE_MAP["en"])
 
-    initial_ctx = llm.ChatContext().append(
-        role="system",
-        text=system_prompt,
+    # Create the agent session with STT-LLM-TTS pipeline
+    session = AgentSession(
+        stt=deepgram.STT(
+            model="nova-2",
+            language=target_language,
+        ),
+        llm=openai.LLM(
+            model="deepseek-chat",
+            base_url="https://api.deepseek.com/v1",
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+        ),
+        tts=cartesia.TTS(
+            voice=voice_id,
+            speed=speaking_speed,
+            model="sonic-3",
+        ),
+        vad=silero.VAD.load(),
+        turn_detection=MultilingualModel(),
     )
 
-    # Configure STT (Deepgram)
-    stt = deepgram.STT(
-        model="nova-2",
-        language=target_language,
+    # Create the language tutor agent
+    agent = LanguageTutor(
+        target_language=target_language,
+        native_language=native_language,
+        level=level,
     )
 
-    # Configure LLM (DeepSeek via OpenAI-compatible API)
-    llm_instance = openai.LLM(
-        model="deepseek-chat",
-        base_url="https://api.deepseek.com/v1",
-        api_key=os.getenv("DEEPSEEK_API_KEY"),
+    # Start the session
+    await session.start(
+        room=ctx.room,
+        agent=agent,
     )
-
-    # Configure TTS (Cartesia)
-    # Map languages to Cartesia voice IDs
-    voice_map = {
-        "en": "a0e99841-438c-4a64-b679-ae501e7d6091",  # British Lady
-        "es": "846d6cb0-2301-48b6-9571-6d4fd3ffea35",  # Spanish Speaker
-        "fr": "a8a1eb38-5f15-4c1d-8722-7ac0f329727d",  # French Speaker
-        "de": "b9de4a89-2257-424b-94c2-db18ba68c81a",  # German Speaker
-        "it": "ee7ea9f8-c0c1-498c-9f62-5b7b56a9ab60",  # Italian Speaker
-        "pt": "700d1ee3-a641-4018-ba6e-899dcadc9e2b",  # Portuguese Speaker
-        "ja": "2b568345-1d48-4047-b25f-7baccf842eb0",  # Japanese Speaker
-        "ko": "663afeec-d082-4ab5-92cc-1c7a9b8718c3",  # Korean Speaker
-        "zh": "d4d4b115-57a0-48ea-9a1a-9898966c2966",  # Chinese Speaker
-    }
-
-    voice_id = voice_map.get(target_language, voice_map["en"])
-
-    tts = cartesia.TTS(
-        voice=voice_id,
-        speed=speaking_speed,
-        model="sonic-3",
-    )
-
-    # Wait for participant to connect
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    participant = await ctx.wait_for_participant()
-
-    logger.info(f"Participant connected: {participant.identity}")
-
-    # Create voice pipeline agent
-    agent = VoicePipelineAgent(
-        vad=ctx.proc.userdata["vad"],
-        stt=stt,
-        llm=llm_instance,
-        tts=tts,
-        chat_ctx=initial_ctx,
-        allow_interruptions=True,
-        interrupt_speech_duration=0.5,
-        min_endpointing_delay=0.5,
-    )
-
-    # Event handlers for logging and analytics
-    @agent.on("user_speech_committed")
-    def on_user_speech(msg: llm.ChatMessage):
-        logger.info(f"User said: {msg.content}")
-
-    @agent.on("agent_speech_committed")
-    def on_agent_speech(msg: llm.ChatMessage):
-        logger.info(f"Agent said: {msg.content}")
-
-    # Start the agent
-    agent.start(ctx.room, participant)
 
     # Initial greeting
-    await agent.say(
-        f"Hello! I'm your language learning assistant. Let's practice {target_language.upper()} together. "
-        "Feel free to start a conversation on any topic, or ask me to help you practice something specific.",
-        allow_interruptions=True,
+    await session.generate_reply(
+        instructions=f"Greet the user warmly and introduce yourself as their {target_language.upper()} language learning assistant. "
+        "Let them know they can start a conversation on any topic or ask for help practicing something specific."
     )
 
 
 if __name__ == "__main__":
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            prewarm_fnc=prewarm,
-        ),
-    )
+    agents.cli.run_app(server)
