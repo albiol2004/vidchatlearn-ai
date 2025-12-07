@@ -158,6 +158,14 @@ export function useLiveKit(_options: UseLiveKitOptions = {}): UseLiveKitReturn {
       return;
     }
 
+    // Check if mediaDevices API is available (requires HTTPS or localhost)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(
+        'Microphone access is not available. Please ensure you are using HTTPS or localhost.'
+      );
+      return;
+    }
+
     setIsConnecting(true);
     setError(null);
     setTranscripts([]);
