@@ -76,6 +76,11 @@ server = AgentServer()
 async def entrypoint(ctx: agents.JobContext):
     """Main entrypoint for the voice agent."""
 
+    # First connect to the room
+    logger.info("Connecting to room...")
+    await ctx.connect()
+    logger.info(f"Connected to room: {ctx.room.name}")
+
     # Wait for a participant to connect
     logger.info("Waiting for participant to connect...")
     participant = await ctx.wait_for_participant()
