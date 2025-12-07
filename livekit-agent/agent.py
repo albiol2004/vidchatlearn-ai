@@ -76,12 +76,26 @@ server = AgentServer()
 async def entrypoint(ctx: agents.JobContext):
     """Main entrypoint for the voice agent."""
 
-    # Get room metadata for user preferences
+    # Wait for a participant to connect and get their metadata
+    metadata = {}
+
+    # Try room metadata first (for backwards compatibility)
     room_metadata = ctx.room.metadata or "{}"
     try:
         metadata = json.loads(room_metadata)
     except:
         metadata = {}
+
+    # If no room metadata, check participant metadata
+    if not metadata:
+        for participant in ctx.room.remote_participants.values():
+            if participant.metadata:
+                try:
+                    metadata = json.loads(participant.metadata)
+                    logger.info(f"Got preferences from participant metadata: {metadata}")
+                    break
+                except:
+                    pass
 
     # User preferences with defaults
     target_language = metadata.get("target_language", "en")

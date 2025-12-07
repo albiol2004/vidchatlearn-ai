@@ -3,13 +3,11 @@ import {
   Room,
   RoomEvent,
   Track,
-  RemoteTrack,
-  RemoteTrackPublication,
   RemoteParticipant,
   LocalParticipant,
   ConnectionState,
-  DataPacket_Kind,
 } from 'livekit-client';
+import type { RemoteTrack, RemoteTrackPublication, DataPacket_Kind } from 'livekit-client';
 import { supabase } from '@/lib/supabase/client';
 
 export interface TranscriptEntry {
@@ -44,7 +42,7 @@ interface UseLiveKitReturn {
 
 const LIVEKIT_URL = import.meta.env.VITE_LIVEKIT_URL || 'ws://69.62.122.245:7880';
 
-export function useLiveKit(_options: UseLiveKitOptions = {}): UseLiveKitReturn {
+export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
   const [room, setRoom] = useState<Room | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.Disconnected
@@ -68,8 +66,7 @@ export function useLiveKit(_options: UseLiveKitOptions = {}): UseLiveKitReturn {
       throw new Error('Not authenticated');
     }
 
-    // For now, generate token locally since Edge Function may not be deployed
-    // In production, this should call the Supabase Edge Function
+    // Pass user preferences as room metadata
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-token`,
       {
@@ -80,6 +77,12 @@ export function useLiveKit(_options: UseLiveKitOptions = {}): UseLiveKitReturn {
         },
         body: JSON.stringify({
           roomName: `learn-${session.user.id}-${Date.now()}`,
+          metadata: {
+            target_language: options.targetLanguage || 'en',
+            native_language: options.nativeLanguage || 'es',
+            level: options.level || 'beginner',
+            speaking_speed: options.speakingSpeed || 1.0,
+          },
         }),
       }
     );
@@ -90,7 +93,7 @@ export function useLiveKit(_options: UseLiveKitOptions = {}): UseLiveKitReturn {
     }
 
     return response.json();
-  }, []);
+  }, [options.targetLanguage, options.nativeLanguage, options.level, options.speakingSpeed]);
 
   // Handle incoming audio tracks from the agent
   const handleTrackSubscribed = useCallback(

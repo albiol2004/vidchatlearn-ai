@@ -10,6 +10,12 @@ const corsHeaders = {
 interface TokenRequest {
   roomName?: string;
   participantName?: string;
+  metadata?: {
+    target_language?: string;
+    native_language?: string;
+    level?: string;
+    speaking_speed?: number;
+  };
 }
 
 serve(async (req) => {
@@ -55,6 +61,9 @@ serve(async (req) => {
     const roomName = body.roomName || `room-${user.id}-${Date.now()}`;
     const participantName = body.participantName || user.email || user.id;
 
+    // User preferences metadata (will be attached to participant)
+    const userMetadata = JSON.stringify(body.metadata || {});
+
     // Generate LiveKit JWT token
     const now = Math.floor(Date.now() / 1000);
     const exp = now + 60 * 60 * 6; // 6 hours
@@ -68,7 +77,7 @@ serve(async (req) => {
       canPublishData: true,
     };
 
-    // Create JWT with LiveKit claims
+    // Create JWT with LiveKit claims including participant metadata
     const secret = new TextEncoder().encode(LIVEKIT_API_SECRET);
     const token = await new SignJWT({
       video: videoGrant,
@@ -78,6 +87,7 @@ serve(async (req) => {
       nbf: now,
       exp: exp,
       jti: user.id,
+      metadata: userMetadata, // Include user preferences as participant metadata
     })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .sign(secret);

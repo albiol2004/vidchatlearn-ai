@@ -2,9 +2,23 @@ import { useParams } from 'react-router-dom';
 import { useLiveKit } from '../hooks/useLiveKit';
 import { VoiceControls } from '../components/VoiceControls';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
+import { useUserStore } from '@/stores/userStore';
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+};
 
 export default function ChatPage() {
   const { conversationId } = useParams();
+  const { preferences } = useUserStore();
 
   const {
     isConnected,
@@ -18,9 +32,10 @@ export default function ChatPage() {
     disconnect,
     toggleMicrophone,
   } = useLiveKit({
-    targetLanguage: 'en',
-    nativeLanguage: 'es',
-    level: 'beginner',
+    targetLanguage: preferences.targetLanguage,
+    nativeLanguage: preferences.nativeLanguage,
+    level: preferences.level,
+    speakingSpeed: preferences.speakingSpeed,
   });
 
   return (
@@ -111,7 +126,7 @@ export default function ChatPage() {
                 ? 'AI tutor is speaking...'
                 : isSpeaking
                   ? 'Listening to you...'
-                  : 'Speak in English to practice. The AI will respond and help you improve.'}
+                  : `Speak in ${LANGUAGE_NAMES[preferences.targetLanguage] || preferences.targetLanguage} to practice. The AI will respond and help you improve.`}
             </p>
 
             {/* Voice Controls */}
