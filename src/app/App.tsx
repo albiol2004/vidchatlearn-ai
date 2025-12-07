@@ -4,7 +4,7 @@ import { AppRoutes } from './routes';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/vidchat">
       <Providers>
         <AppRoutes />
       </Providers>
