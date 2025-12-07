@@ -120,9 +120,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <p className="text-center text-sm text-muted-foreground">
-        Settings are saved automatically
-      </p>
+      <p className="text-center text-sm text-muted-foreground">Settings are saved automatically</p>
     </div>
   );
 }
