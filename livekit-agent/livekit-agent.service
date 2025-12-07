@@ -1,0 +1,23 @@
+[Unit]
+Description=LiveKit Voice Agent for VidChatLearn
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/vidchat/livekit-agent
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 agent.py start
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=append:/var/log/livekit-agent.log
+StandardError=append:/var/log/livekit-agent.log
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

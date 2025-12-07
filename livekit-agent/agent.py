@@ -150,10 +150,10 @@ async def entrypoint(ctx: agents.JobContext):
         agent=agent,
     )
 
-    # Initial greeting
+    # Initial greeting - explicitly in target language only
     await session.generate_reply(
-        instructions=f"Greet the user warmly and introduce yourself as their {target_language.upper()} language learning assistant. "
-        "Let them know they can start a conversation on any topic or ask for help practicing something specific."
+        instructions=f"Greet the user warmly IN {target_language.upper()} ONLY. Introduce yourself as their language learning assistant. "
+        f"Keep it short (1-2 sentences). Do NOT translate or repeat in any other language."
     )
 
 
