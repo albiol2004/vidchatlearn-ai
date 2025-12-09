@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -13,6 +14,29 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 load_dotenv()
 
 logger = logging.getLogger("voice-agent")
+
+
+async def send_transcript(room: rtc.Room, role: str, text: str, is_final: bool = True):
+    """Send transcript data to the frontend."""
+    if not text.strip():
+        return
+
+    data = {
+        "type": "transcript",
+        "id": str(uuid.uuid4()),
+        "role": role,
+        "text": text,
+        "isFinal": is_final,
+    }
+
+    try:
+        await room.local_participant.publish_data(
+            json.dumps(data).encode("utf-8"),
+            reliable=True,
+        )
+        logger.debug(f"Sent transcript: {role} - {text[:50]}...")
+    except Exception as e:
+        logger.error(f"Failed to send transcript: {e}")
 
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -143,6 +167,17 @@ async def entrypoint(ctx: agents.JobContext):
         native_language=native_language,
         level=level,
     )
+
+    # Set up transcript event handlers
+    @session.on("user_speech_committed")
+    def on_user_speech(msg):
+        """Handle finalized user speech."""
+        asyncio.create_task(send_transcript(ctx.room, "user", msg.content))
+
+    @session.on("agent_speech_committed")
+    def on_agent_speech(msg):
+        """Handle finalized agent speech."""
+        asyncio.create_task(send_transcript(ctx.room, "assistant", msg.content))
 
     # Start the session
     await session.start(
