@@ -28,10 +28,13 @@ export default function ChatPage() {
     isMicEnabled,
     transcripts,
     error,
+    // currentConversationId can be used to show conversation ID or for navigation
+    currentConversationId: _currentConversationId,
     connect,
     disconnect,
     toggleMicrophone,
   } = useLiveKit({
+    conversationId,
     targetLanguage: preferences.targetLanguage,
     nativeLanguage: preferences.nativeLanguage,
     level: preferences.level,

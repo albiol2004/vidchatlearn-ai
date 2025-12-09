@@ -9,6 +9,14 @@ import {
 } from 'livekit-client';
 import type { RemoteTrack, RemoteTrackPublication, DataPacket_Kind } from 'livekit-client';
 import { supabase } from '@/lib/supabase/client';
+import {
+  createConversation,
+  getConversationWithTranscripts,
+  addTranscriptEntry,
+  endConversation,
+  updateConversationTitle,
+  formatTranscriptsForContext,
+} from '@/lib/supabase/conversations';
 
 export interface TranscriptEntry {
   id: string;
@@ -19,6 +27,7 @@ export interface TranscriptEntry {
 }
 
 interface UseLiveKitOptions {
+  conversationId?: string;
   targetLanguage?: string;
   nativeLanguage?: string;
   level?: string;
@@ -34,6 +43,7 @@ interface UseLiveKitReturn {
   agentIsSpeaking: boolean;
   transcripts: TranscriptEntry[];
   error: string | null;
+  currentConversationId: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
   toggleMicrophone: () => void;
@@ -53,51 +63,60 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
   const roomRef = useRef<Room | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const agentSpeakingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const startTimeRef = useRef<Date | null>(null);
+  const transcriptCountRef = useRef(0);
 
   // Debounce delay for agent speaking state (ms) - gives time for natural pauses
   const AGENT_SPEAKING_DEBOUNCE = 1500;
 
   // Fetch LiveKit token from Supabase Edge Function
-  const fetchToken = useCallback(async (): Promise<{ token: string; roomName: string }> => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('Not authenticated');
-    }
-
-    // Pass user preferences as room metadata
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-token`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roomName: `learn-${session.user.id}-${Date.now()}`,
-          metadata: {
-            target_language: options.targetLanguage || 'en',
-            native_language: options.nativeLanguage || 'es',
-            level: options.level || 'beginner',
-            speaking_speed: options.speakingSpeed || 1.0,
-          },
-        }),
+  const fetchToken = useCallback(
+    async (previousContext?: string): Promise<{ token: string; roomName: string }> => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
       }
-    );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to get LiveKit token');
-    }
+      // Pass user preferences and conversation context as metadata
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-token`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomName: `learn-${session.user.id}-${Date.now()}`,
+            metadata: {
+              target_language: options.targetLanguage || 'en',
+              native_language: options.nativeLanguage || 'es',
+              level: options.level || 'beginner',
+              speaking_speed: options.speakingSpeed || 1.0,
+              conversation_id: conversationIdRef.current,
+              previous_context: previousContext || '',
+            },
+          }),
+        }
+      );
 
-    return response.json();
-  }, [options.targetLanguage, options.nativeLanguage, options.level, options.speakingSpeed]);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get LiveKit token');
+      }
+
+      return response.json();
+    },
+    [options.targetLanguage, options.nativeLanguage, options.level, options.speakingSpeed]
+  );
 
   // Handle incoming audio tracks from the agent
   const handleTrackSubscribed = useCallback(
@@ -125,6 +144,20 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
     []
   );
 
+  // Save transcript to database
+  const saveTranscript = useCallback(async (role: 'user' | 'assistant', content: string) => {
+    if (!conversationIdRef.current || !content.trim()) return;
+
+    await addTranscriptEntry(conversationIdRef.current, role, content);
+
+    // Auto-generate title from first user message
+    transcriptCountRef.current += 1;
+    if (transcriptCountRef.current === 1 && role === 'user' && conversationIdRef.current) {
+      const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+      await updateConversationTitle(conversationIdRef.current, title);
+    }
+  }, []);
+
   // Handle data messages (transcripts)
   const handleDataReceived = useCallback(
     (payload: Uint8Array, _participant?: RemoteParticipant, _kind?: DataPacket_Kind) => {
@@ -151,12 +184,17 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
             }
             return [...prev, entry];
           });
+
+          // Save final transcripts to database
+          if (entry.isFinal) {
+            saveTranscript(entry.role, entry.text);
+          }
         }
       } catch (e) {
         console.error('Error parsing data message:', e);
       }
     },
-    []
+    [saveTranscript]
   );
 
   // Connect to LiveKit room
@@ -176,9 +214,65 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
     setIsConnecting(true);
     setError(null);
     setTranscripts([]);
+    transcriptCountRef.current = 0;
 
     try {
-      const { token } = await fetchToken();
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      let previousContext = '';
+
+      // Handle conversation: resume existing or create new
+      if (options.conversationId) {
+        // Resuming existing conversation - load previous transcripts
+        const existingConversation = await getConversationWithTranscripts(options.conversationId);
+        if (existingConversation) {
+          conversationIdRef.current = existingConversation.id;
+          setCurrentConversationId(existingConversation.id);
+
+          // Format previous transcripts as context for the agent
+          if (existingConversation.transcript_entries.length > 0) {
+            previousContext = formatTranscriptsForContext(existingConversation.transcript_entries);
+
+            // Also populate the UI with previous transcripts
+            const previousEntries: TranscriptEntry[] = existingConversation.transcript_entries.map(
+              (t) => ({
+                id: t.id,
+                role: t.role,
+                text: t.content,
+                timestamp: new Date(t.created_at),
+                isFinal: true,
+              })
+            );
+            setTranscripts(previousEntries);
+            transcriptCountRef.current = previousEntries.length;
+          }
+        } else {
+          console.warn('Conversation not found, creating new one');
+        }
+      }
+
+      // Create new conversation if we don't have one
+      if (!conversationIdRef.current) {
+        const newConversation = await createConversation(
+          user.id,
+          options.targetLanguage || 'en',
+          options.level || 'beginner'
+        );
+        if (newConversation) {
+          conversationIdRef.current = newConversation.id;
+          setCurrentConversationId(newConversation.id);
+        }
+      }
+
+      startTimeRef.current = new Date();
+
+      const { token } = await fetchToken(previousContext);
 
       const newRoom = new Room({
         adaptiveStream: true,
@@ -237,14 +331,30 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
     } finally {
       setIsConnecting(false);
     }
-  }, [fetchToken, handleTrackSubscribed, handleTrackUnsubscribed, handleDataReceived]);
+  }, [
+    fetchToken,
+    handleTrackSubscribed,
+    handleTrackUnsubscribed,
+    handleDataReceived,
+    options.conversationId,
+    options.targetLanguage,
+    options.level,
+  ]);
 
   // Disconnect from room
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     // Clear any pending speaking timeout
     if (agentSpeakingTimeoutRef.current) {
       clearTimeout(agentSpeakingTimeoutRef.current);
       agentSpeakingTimeoutRef.current = null;
+    }
+
+    // End conversation in database
+    if (conversationIdRef.current && startTimeRef.current) {
+      const durationSeconds = Math.round(
+        (new Date().getTime() - startTimeRef.current.getTime()) / 1000
+      );
+      await endConversation(conversationIdRef.current, durationSeconds);
     }
 
     if (roomRef.current) {
@@ -263,8 +373,14 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
       audioElementRef.current = null;
     }
 
+    // Reset refs
+    conversationIdRef.current = null;
+    startTimeRef.current = null;
+    transcriptCountRef.current = 0;
+
     // Reset all states
     setTranscripts([]);
+    setCurrentConversationId(null);
     setIsSpeaking(false);
     setAgentIsSpeaking(false);
     setIsMicEnabled(true);
@@ -298,6 +414,7 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
     agentIsSpeaking,
     transcripts,
     error,
+    currentConversationId,
     connect,
     disconnect,
     toggleMicrophone,

@@ -80,17 +80,30 @@ class LanguageTutor(Agent):
         target_language: str = "en",
         native_language: str = "es",
         level: str = "beginner",
+        previous_context: str = "",
     ) -> None:
         # Load and configure system prompt
         system_prompt = load_prompt(level)
         system_prompt = system_prompt.replace("{TARGET_LANGUAGE}", target_language.upper())
         system_prompt = system_prompt.replace("{NATIVE_LANGUAGE}", native_language.upper())
 
+        # Add previous conversation context if resuming
+        if previous_context:
+            system_prompt += f"""
+
+## Previous Conversation Context
+This is a continuation of a previous conversation. Here is what was discussed:
+
+{previous_context}
+
+Continue the conversation naturally, acknowledging you remember the previous discussion when appropriate. Do not repeat greetings - just continue where you left off."""
+
         super().__init__(instructions=system_prompt)
 
         self.target_language = target_language
         self.native_language = native_language
         self.level = level
+        self.is_resumed = bool(previous_context)
 
 
 server = AgentServer()
@@ -133,10 +146,15 @@ async def entrypoint(ctx: agents.JobContext):
     native_language = metadata.get("native_language", "es")
     level = metadata.get("level", "beginner")
     speaking_speed = float(metadata.get("speaking_speed", 1.0))
+    previous_context = metadata.get("previous_context", "")
+    conversation_id = metadata.get("conversation_id", "")
 
+    is_resumed = bool(previous_context)
     logger.info(
-        f"Starting conversation - Language: {target_language}, Level: {level}, Speed: {speaking_speed}"
+        f"Starting conversation - Language: {target_language}, Level: {level}, Speed: {speaking_speed}, Resumed: {is_resumed}"
     )
+    if is_resumed:
+        logger.info(f"Previous context length: {len(previous_context)} chars")
 
     # Get voice ID for the target language
     voice_id = VOICE_MAP.get(target_language, VOICE_MAP["en"])
@@ -166,6 +184,7 @@ async def entrypoint(ctx: agents.JobContext):
         target_language=target_language,
         native_language=native_language,
         level=level,
+        previous_context=previous_context,
     )
 
     # Set up transcript event handlers
@@ -185,11 +204,18 @@ async def entrypoint(ctx: agents.JobContext):
         agent=agent,
     )
 
-    # Initial greeting - explicitly in target language only
-    await session.generate_reply(
-        instructions=f"Greet the user warmly IN {target_language.upper()} ONLY. Introduce yourself as their language learning assistant. "
-        f"Keep it short (1-2 sentences). Do NOT translate or repeat in any other language."
-    )
+    # Generate appropriate greeting based on whether this is a new or resumed conversation
+    if is_resumed:
+        await session.generate_reply(
+            instructions=f"Welcome the user back IN {target_language.upper()} ONLY. Briefly acknowledge you remember the previous conversation "
+            f"and ask if they'd like to continue where you left off or discuss something new. Keep it short (1-2 sentences). "
+            f"Do NOT translate or repeat in any other language."
+        )
+    else:
+        await session.generate_reply(
+            instructions=f"Greet the user warmly IN {target_language.upper()} ONLY. Introduce yourself as their language learning assistant. "
+            f"Keep it short (1-2 sentences). Do NOT translate or repeat in any other language."
+        )
 
 
 if __name__ == "__main__":
