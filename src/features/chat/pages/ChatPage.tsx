@@ -40,8 +40,8 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-2xl">
           {conversationId ? 'Continue Conversation' : 'New Conversation'}
         </h1>
         {isConnected && (
@@ -58,12 +58,12 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed p-8">
+      <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed p-4 sm:p-8">
         {!isConnected ? (
           <div className="text-center">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 sm:h-20 sm:w-20">
               <svg
-                className="h-10 w-10 text-primary"
+                className="h-8 w-8 text-primary sm:h-10 sm:w-10"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -76,8 +76,8 @@ export default function ChatPage() {
                 />
               </svg>
             </div>
-            <h2 className="mb-2 text-xl font-semibold">Ready to practice?</h2>
-            <p className="mb-6 text-muted-foreground">
+            <h2 className="mb-2 text-lg font-semibold sm:text-xl">Ready to practice?</h2>
+            <p className="mb-6 text-sm text-muted-foreground sm:text-base">
               Click the button below to start a voice conversation with your AI tutor.
             </p>
             <VoiceControls
@@ -92,16 +92,16 @@ export default function ChatPage() {
             />
           </div>
         ) : (
-          <div className="flex w-full flex-col items-center gap-6">
+          <div className="flex w-full flex-col items-center gap-4 sm:gap-6">
             {/* AI Avatar / Speaking indicator */}
             <div className="relative">
               <div
-                className={`flex h-32 w-32 items-center justify-center rounded-full transition-all ${
+                className={`flex h-24 w-24 items-center justify-center rounded-full transition-all sm:h-32 sm:w-32 ${
                   agentIsSpeaking ? 'bg-primary/20 ring-4 ring-primary/50' : 'bg-muted'
                 }`}
               >
                 <svg
-                  className={`h-16 w-16 transition-colors ${
+                  className={`h-12 w-12 transition-colors sm:h-16 sm:w-16 ${
                     agentIsSpeaking ? 'text-primary' : 'text-muted-foreground'
                   }`}
                   fill="none"
@@ -121,12 +121,12 @@ export default function ChatPage() {
               )}
             </div>
 
-            <p className="text-center text-muted-foreground">
+            <p className="px-4 text-center text-sm text-muted-foreground sm:text-base">
               {agentIsSpeaking
                 ? 'AI tutor is speaking...'
                 : isSpeaking
                   ? 'Listening to you...'
-                  : `Speak in ${LANGUAGE_NAMES[preferences.targetLanguage] || preferences.targetLanguage} to practice. The AI will respond and help you improve.`}
+                  : `Speak in ${LANGUAGE_NAMES[preferences.targetLanguage] || preferences.targetLanguage} to practice.`}
             </p>
 
             {/* Voice Controls */}

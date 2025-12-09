@@ -42,41 +42,43 @@ export function VoiceControls({
   }
 
   return (
-    <div className="flex items-center gap-4">
-      {/* Microphone toggle */}
-      <button
-        onClick={onToggleMic}
-        className={`relative flex h-16 w-16 items-center justify-center rounded-full transition-all ${
-          isMicEnabled
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-        }`}
-      >
-        {isMicEnabled ? <MicIcon className="h-7 w-7" /> : <MicOffIcon className="h-7 w-7" />}
-        {/* Speaking indicator */}
-        {isSpeaking && isMicEnabled && (
-          <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />
-        )}
-      </button>
+    <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:items-center">
+      <div className="flex items-center gap-4">
+        {/* Microphone toggle */}
+        <button
+          onClick={onToggleMic}
+          className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all sm:h-16 sm:w-16 ${
+            isMicEnabled
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+          }`}
+        >
+          {isMicEnabled ? <MicIcon className="h-6 w-6 sm:h-7 sm:w-7" /> : <MicOffIcon className="h-6 w-6 sm:h-7 sm:w-7" />}
+          {/* Speaking indicator */}
+          {isSpeaking && isMicEnabled && (
+            <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />
+          )}
+        </button>
 
-      {/* Status indicator */}
-      <div className="flex flex-col">
-        <span className="text-sm font-medium">
-          {isSpeaking
-            ? 'You are speaking...'
-            : agentIsSpeaking
-              ? 'AI is responding...'
-              : 'Listening...'}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {isMicEnabled ? 'Microphone on' : 'Microphone muted'}
-        </span>
+        {/* Status indicator */}
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">
+            {isSpeaking
+              ? 'You are speaking...'
+              : agentIsSpeaking
+                ? 'AI is responding...'
+                : 'Listening...'}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {isMicEnabled ? 'Microphone on' : 'Microphone muted'}
+          </span>
+        </div>
       </div>
 
       {/* End conversation button */}
       <button
         onClick={onDisconnect}
-        className="ml-auto flex items-center gap-2 rounded-lg bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/20"
+        className="flex items-center gap-2 rounded-lg bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/20 sm:ml-auto"
       >
         <PhoneOffIcon className="h-4 w-4" />
         End

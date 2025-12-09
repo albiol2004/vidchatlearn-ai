@@ -56,6 +56,10 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
 
   const roomRef = useRef<Room | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const agentSpeakingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce delay for agent speaking state (ms) - gives time for natural pauses
+  const AGENT_SPEAKING_DEBOUNCE = 1500;
 
   // Fetch LiveKit token from Supabase Edge Function
   const fetchToken = useCallback(async (): Promise<{ token: string; roomName: string }> => {
@@ -194,7 +198,24 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
         const localSpeaking = speakers.some((s) => s instanceof LocalParticipant);
         const remoteSpeaking = speakers.some((s) => s instanceof RemoteParticipant);
         setIsSpeaking(localSpeaking);
-        setAgentIsSpeaking(remoteSpeaking);
+
+        // Debounce agent speaking state to handle natural pauses
+        if (remoteSpeaking) {
+          // Agent started speaking - clear any pending timeout and set immediately
+          if (agentSpeakingTimeoutRef.current) {
+            clearTimeout(agentSpeakingTimeoutRef.current);
+            agentSpeakingTimeoutRef.current = null;
+          }
+          setAgentIsSpeaking(true);
+        } else {
+          // Agent stopped speaking - wait before updating state in case they resume
+          if (!agentSpeakingTimeoutRef.current) {
+            agentSpeakingTimeoutRef.current = setTimeout(() => {
+              setAgentIsSpeaking(false);
+              agentSpeakingTimeoutRef.current = null;
+            }, AGENT_SPEAKING_DEBOUNCE);
+          }
+        }
       });
 
       newRoom.on(RoomEvent.Disconnected, () => {
@@ -220,7 +241,15 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
 
   // Disconnect from room
   const disconnect = useCallback(() => {
+    // Clear any pending speaking timeout
+    if (agentSpeakingTimeoutRef.current) {
+      clearTimeout(agentSpeakingTimeoutRef.current);
+      agentSpeakingTimeoutRef.current = null;
+    }
+
     if (roomRef.current) {
+      // Remove all event listeners before disconnecting
+      roomRef.current.removeAllListeners();
       roomRef.current.disconnect();
       roomRef.current = null;
       setRoom(null);
@@ -228,11 +257,19 @@ export function useLiveKit(options: UseLiveKitOptions = {}): UseLiveKitReturn {
 
     // Clean up audio element
     if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.srcObject = null;
       audioElementRef.current.remove();
       audioElementRef.current = null;
     }
 
+    // Reset all states
     setTranscripts([]);
+    setIsSpeaking(false);
+    setAgentIsSpeaking(false);
+    setIsMicEnabled(true);
+    setError(null);
+    setIsConnecting(false);
     setConnectionState(ConnectionState.Disconnected);
   }, []);
 
