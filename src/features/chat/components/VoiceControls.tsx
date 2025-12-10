@@ -53,7 +53,11 @@ export function VoiceControls({
               : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
           }`}
         >
-          {isMicEnabled ? <MicIcon className="h-6 w-6 sm:h-7 sm:w-7" /> : <MicOffIcon className="h-6 w-6 sm:h-7 sm:w-7" />}
+          {isMicEnabled ? (
+            <MicIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+          ) : (
+            <MicOffIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+          )}
           {/* Speaking indicator */}
           {isSpeaking && isMicEnabled && (
             <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />

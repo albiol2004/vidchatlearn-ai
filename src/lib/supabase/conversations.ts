@@ -65,10 +65,12 @@ export async function getConversationWithTranscripts(
 ): Promise<ConversationWithTranscripts | null> {
   const { data, error } = await db
     .from('conversations')
-    .select(`
+    .select(
+      `
       *,
       transcript_entries (*)
-    `)
+    `
+    )
     .eq('id', conversationId)
     .single();
 
@@ -133,10 +135,7 @@ export async function endConversation(
     updateData.duration_seconds = durationSeconds;
   }
 
-  const { error } = await db
-    .from('conversations')
-    .update(updateData)
-    .eq('id', conversationId);
+  const { error } = await db.from('conversations').update(updateData).eq('id', conversationId);
 
   if (error) {
     console.error('Error ending conversation:', error);
@@ -153,10 +152,7 @@ export async function updateConversationTitle(
   conversationId: string,
   title: string
 ): Promise<boolean> {
-  const { error } = await db
-    .from('conversations')
-    .update({ title })
-    .eq('id', conversationId);
+  const { error } = await db.from('conversations').update({ title }).eq('id', conversationId);
 
   if (error) {
     console.error('Error updating conversation title:', error);
@@ -169,10 +165,7 @@ export async function updateConversationTitle(
 /**
  * Get user's conversations list
  */
-export async function getUserConversations(
-  userId: string,
-  limit = 20
-): Promise<Conversation[]> {
+export async function getUserConversations(userId: string, limit = 20): Promise<Conversation[]> {
   const { data, error } = await db
     .from('conversations')
     .select('*')
