@@ -9,7 +9,7 @@ set -e
 
 # Configuration
 VPS_USER="root"
-VPS_HOST="69.62.122.245"
+VPS_HOST="alejandrogarcia.blog"
 VPS_REPO="/root/vidchat"
 VPS_WWW="/var/www/vidchat"
 SSH_TARGET="${VPS_USER}@${VPS_HOST}"
