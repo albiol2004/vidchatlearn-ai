@@ -187,25 +187,22 @@ async def entrypoint(ctx: agents.JobContext):
         previous_context=previous_context,
     )
 
-    # Set up transcript event handler (Agents 1.x uses conversation_item_added)
-    @session.on("conversation_item_added")
-    def on_conversation_item(event):
-        """Handle new conversation items (both user and agent messages)."""
-        item = event.item
-        # Check if it's a message with content
-        if hasattr(item, 'role') and hasattr(item, 'content'):
-            role = "user" if item.role == "user" else "assistant"
-            # Content might be a list of content parts or a string
-            if isinstance(item.content, list):
-                text = " ".join(
-                    part.text for part in item.content
-                    if hasattr(part, 'text') and part.text
-                )
-            else:
-                text = str(item.content) if item.content else ""
+    # Set up transcript event handlers
+    @session.on("user_speech_committed")
+    def on_user_speech(msg):
+        """Handle finalized user speech from STT."""
+        logger.info(f"User speech committed: {msg}")
+        text = msg.content if hasattr(msg, 'content') else str(msg)
+        if text and text.strip():
+            asyncio.create_task(send_transcript(ctx.room, "user", text))
 
-            if text.strip():
-                asyncio.create_task(send_transcript(ctx.room, role, text))
+    @session.on("agent_speech_committed")
+    def on_agent_speech(msg):
+        """Handle finalized agent speech."""
+        logger.info(f"Agent speech committed: {msg}")
+        text = msg.content if hasattr(msg, 'content') else str(msg)
+        if text and text.strip():
+            asyncio.create_task(send_transcript(ctx.room, "assistant", text))
 
     # Start the session
     await session.start(
